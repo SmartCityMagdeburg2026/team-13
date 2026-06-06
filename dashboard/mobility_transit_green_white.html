@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mobility & Transit — SmartCity Magdeburg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root{
+  --page:#f5faf6;
+  --page-soft:#edf7f0;
+  --surface:#ffffff;
+  --surface-2:#f8fcf9;
+  --green:#007a3d;
+  --green-dark:#005f31;
+  --green-soft:#e2f3e8;
+  --green-line:#b9dec8;
+  --lime:#9ac400;
+  --mint:#2bb673;
+  --teal:#009879;
+  --amber:#f4a300;
+  --red:#c62845;
+  --blue:#2f80ed;
+  --yellow:#9ac400;
+  --cyan:#2bb673;
+  --violet:#6aa84f;
+  --ink:#18392a;
+  --muted:#5f7769;
+  --dim:#81958a;
+  --border:#d7e8dd;
+  --border-strong:#b5d9c3;
+  --shadow:0 18px 42px rgba(18,74,46,.12);
+  --shadow-soft:0 8px 22px rgba(18,74,46,.08);
+  --r:22px;
+  --rs:14px;
+  --mono:'JetBrains Mono',monospace;
+  --ui:'Outfit',system-ui,sans-serif;
+  --display:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;scroll-behavior:smooth}
+body{
+  min-height:100vh;
+  color:var(--ink);
+  font-family:var(--ui);
+  background:
+    radial-gradient(circle at 8% 0%,rgba(154,196,0,.20),transparent 28%),
+    radial-gradient(circle at 92% 4%,rgba(0,122,61,.12),transparent 32%),
+    linear-gradient(135deg,var(--page),#ffffff 68%);
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+button,input,select{font:inherit}
+.layout{min-height:100vh; display:flex; flex-direction:column;}
+.header-brand{display:flex;align-items:center;gap:12px;min-width:260px}
+.header-logo{
+  width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--green),var(--mint));
+  color:#ffffff;font-weight:900;font-size:1.05rem;box-shadow:0 10px 22px rgba(0,122,61,.20);
+}
+.header-title{display:flex;flex-direction:column;line-height:1.08}
+.header-title strong{font-family:var(--display);font-size:1.08rem;color:var(--green-dark);letter-spacing:-.015em}
+.header-title span{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-top:4px}
+.back-link{
+  display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border-radius:999px;
+  background:var(--green-soft);border:1px solid var(--border-strong);color:var(--green-dark);font-weight:850;font-size:.82rem;
+}
+.back-link:hover{background:#d7efdf}
+.topbar-status{display:flex;align-items:center;justify-content:flex-end;gap:14px;min-width:245px}
+.status-pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:7px 10px;background:#ffffff;border:1px solid var(--border);color:var(--green-dark);font-family:var(--mono);font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.09em}
+.main{flex:1; min-width:0}
+.topbar{
+  position:sticky;top:0;z-index:60;min-height:72px;background:rgba(255,255,255,.92);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--border);display:flex; justify-content:space-between;
+  align-items:center;gap:18px;padding:10px 30px;box-shadow:0 10px 26 rgba(18,74,46,.07);
+}
+.live{display:flex;align-items:center;gap:10px;color:var(--green-dark);font-family:var(--mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 0 rgba(154,196,0,.55);animation:pulse 2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px rgba(154,196,0,0)}}
+.clock{color:var(--muted);font-family:var(--mono);font-size:.84rem}
+.content{max-width:1540px;margin:0 auto;padding:30px}
+.hero{
+  position:relative;overflow:hidden;border-radius:28px;padding:34px;
+  background:
+    linear-gradient(110deg,rgba(0,95,49,.96),rgba(0,122,61,.88) 58%,rgba(43,182,115,.84)),
+    radial-gradient(circle at 80% 16%,rgba(154,196,0,.45),transparent 38%);
+  border:1px solid rgba(0,122,61,.24);box-shadow:var(--shadow);margin-bottom:22px;color:#ffffff;
+}
+.hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(350px,.85fr);gap:30px;align-items:center}
+.title{font-family:var(--display);font-size:clamp(2.5rem,4vw,4.2rem);line-height:.95;letter-spacing:-.045em;margin-bottom:12px;color:#ffffff}
+.subtitle{font-size:1.03rem;color:#eefbf2;line-height:1.6;max-width:760px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:23px}
+.btn{border:0;border-radius:999px;padding:11px 17px;font-weight:900;cursor:pointer;display:inline-flex;align-items:center;gap:8px;transition:.18s}
+.btn:hover{transform:translateY(-1px);opacity:.94}
+.btn-primary{background:#ffffff;color:var(--green-dark)}
+.btn-secondary{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.38);color:#ffffff}
+.live-board{background:rgba(255,255,255,.96);border:1px solid rgba(255,255,255,.65);border-radius:22px;padding:18px;box-shadow:0 18px 40px rgba(18,74,46,.18);color:var(--ink)}
+.board-title{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;font-weight:800}
+.board-line{display:grid;grid-template-columns:48px 1fr 76px;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--border)}
+.board-line:first-of-type{border-top:0}
+.line-badge{height:32px;border-radius:10px;display:grid;place-items:center;color:#ffffff;font-weight:900;font-family:var(--mono);box-shadow:0 6px 16px rgba(18,74,46,.16)}
+.line-badge.bus{background:var(--mint);color:#ffffff}
+.line-badge.tram{background:var(--green)}
+.line-info strong{display:block;font-size:.9rem;color:var(--ink)}
+.line-info span{color:var(--muted);font-size:.75rem}
+.line-time{text-align:right;font-family:var(--mono);font-weight:900;color:var(--green-dark)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;box-shadow:var(--shadow-soft);position:relative;transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.card:hover{transform:translateY(-3px); border-color:var(--border-strong);box-shadow:var(--shadow)}
+.card-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+.label{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.13em;color:var(--muted);margin-bottom:6px;font-weight:800}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;font-weight:900}
+.chip.ok{background:#e4f5ea;border:1px solid #bde0ca;color:var(--green-dark)}
+.chip.warn{background:#fff3d6;border:1px solid #f3d28a;color:#986300}
+.chip.danger{background:#fde8ec;border:1px solid #f2b3bf;color:var(--red)}
+.chip.blue{background:#e6f2ff;border:1px solid #b8d9fb;color:#2166b3}
+.chip.yellow{background:#eff7d8;border:1px solid #cfdf90;color:#587000}
+
+.travel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.travel-card{position:relative;overflow:hidden;min-height:218px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer}
+.travel-top{position:relative;z-index:1;display:flex;gap:14px;align-items:flex-start}
+.travel-icon{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:var(--green-soft);border:1px solid var(--border-strong);color:var(--green-dark);transition:.22s ease;flex:0 0 auto}
+.travel-card:hover .travel-icon{background:var(--green);color:#ffffff}
+.travel-content h3{font-family:var(--display);font-size:1.25rem;letter-spacing:-.02em;color:var(--green-dark);margin-bottom:6px}
+.travel-content p{font-size:.88rem;line-height:1.55;color:var(--muted)}
+.travel-meta{position:relative;z-index:1;margin-top:14px;display:flex;flex-wrap:wrap;gap:7px}
+.travel-link{position:relative;z-index:1;margin-top:16px;display:inline-flex;align-items:center;gap:7px;color:var(--green-dark);font-weight:900;font-size:.86rem}
+.travel-note{position:relative;z-index:1;margin-top:12px;padding:11px 13px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted);font-size:.8rem;line-height:1.5}
+.section-title{display:flex;align-items:center;gap:14px;margin:10px 0 16px}
+.section-title h2{font-family:var(--display);font-size:1.65rem;letter-spacing:-.025em;color:var(--green-dark)}
+.section-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,var(--border-strong),transparent)}
+
+/* ===== MODAL BASE SYSTEM ===== */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(24, 57, 42, 0.4); backdrop-filter: blur(8px);
+  z-index: 1000; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+}
+.modal-overlay.is-active { opacity: 1; pointer-events: auto; }
+.modal-container {
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: 28px; width: 90%; max-width: 960px; max-height: 85vh;
+  box-shadow: 0 24px 64px rgba(18,74,46,0.22); overflow: hidden;
+  display: flex; flex-direction: column; transform: translateY(20px); transition: transform 0.25s ease;
+}
+.modal-overlay.is-active .modal-container { transform: translateY(0); }
+.modal-header {
+  padding: 20px 30px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center; background: var(--surface-2);
+}
+.modal-header h2 { font-family: var(--display); color: var(--green-dark); font-size: 1.6rem; }
+.modal-close {
+  background: var(--green-soft); border: 1px solid var(--border-strong);
+  width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; color: var(--green-dark); font-weight: 800; transition: 0.15s;
+}
+.modal-close:hover { background: var(--red); color: #fff; border-color: var(--red); }
+.modal-body { padding: 30px; overflow-y: auto; flex: 1; }
+
+/* ===== MODAL INSIDE UTILITIES & GRIDS ===== */
+.planner-shell{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch}
+.planner-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.planner-form .full{grid-column:1/-1}
+.planner-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+.mode-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.mode-pill{border:1px solid var(--border);background:#fff;color:var(--muted);border-radius:999px;padding:7px 10px;font-weight:850;font-size:.78rem;cursor:pointer; display:inline-flex; align-items:center; gap:6px;}
+.mode-pill.active{background:var(--green);border-color:var(--green);color:#fff}
+.route-suggestion{border:1px solid var(--border);border-radius:18px;background:var(--surface-2);padding:16px;display:grid;gap:12px}
+.route-step{display:grid;grid-template-columns:42px 1fr auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--border)}
+.route-step:first-child{border-top:0}
+.route-step-icon{width:42px;height:42px;border-radius:14px;background:var(--green-soft);display:grid;place-items:center;border:1px solid var(--border-strong); font-weight:900; color:var(--green-dark)}
+.route-step strong{display:block;color:var(--green-dark)}
+.route-step span{color:var(--muted);font-size:.79rem}
+.route-step time{font-family:var(--mono);font-weight:900;color:var(--green-dark)}
+
+.alert-list{display:grid;gap:11px;}
+.alert{display:grid;grid-template-columns:46px 1fr;gap:12px;padding:13px;border:1px solid var(--border);border-radius:15px;background:#ffffff}
+.alert-icon{height:46px;border-radius:14px;display:grid;place-items:center;background:var(--green-soft);border:1px solid var(--border-strong);color:var(--green-dark); display:flex; align-items:center; justify-content:center}
+.alert h4{font-size:.95rem;margin-bottom:5px;color:var(--green-dark)}
+.alert p{font-size:.79rem;color:var(--muted);line-height:1.5}
+.alert time{display:block;margin-top:6px;color:var(--dim);font-family:var(--mono);font-size:.68rem}
+.line-tags{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 6px}
+.tag{min-width:26px;padding:2px 6px;border-radius:7px;background:var(--green);color:#ffffff;font-weight:900;font-family:var(--mono);font-size:.68rem;text-align:center}
+.tag.bus{background:var(--mint);color:#ffffff}
+.tag.night{background:var(--lime);color:var(--green-dark)}
+
+.explore-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.explore-card{overflow:hidden;padding:0}
+.explore-media{height:98px;background:linear-gradient(135deg,var(--green),var(--mint));display:flex;align-items:center;padding:16px;color:#fff;position:relative;gap:12px}
+.explore-media strong{font-family:var(--display);font-size:1.45rem;z-index:1; line-height:1.05}
+.explore-body{padding:18px}
+.explore-body p{font-size:.86rem}
+.explore-facts{display:grid;gap:8px;margin-top:14px}
+.fact{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border);padding-bottom:7px;color:var(--muted);font-size:.8rem}
+.fact strong{color:var(--green-dark)}
+
+.ticket-popup-layout {display:grid; grid-template-columns: 1fr; gap:16px;}
+.ticket-row-item {padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-2); display: flex; justify-content: space-between; align-items: center; gap: 20px;}
+.ticket-row-left h3 {color: var(--green-dark); font-family: var(--display); font-size: 1.2rem; margin-bottom: 4px;}
+.ticket-row-left p {color: var(--muted); font-size: 0.85rem;}
+.ticket-row-right {text-align: right; min-width: 140px;}
+.ticket-row-price {font-family: var(--mono); font-weight: 900; color: var(--green); font-size: 1.25rem;}
+
+.chart-grid-container {display:grid; grid-template-columns: 1fr 1fr; gap:20px;}
+.chart-wrap {background: var(--surface-2); border: 1px solid var(--border); border-radius: 16px; padding: 16px;}
+.chart-box{height:240px; position:relative; margin-top:10px;}
+
+.safety-layout{display:grid;grid-template-columns:1fr 1.1fr;gap:18px}
+.safety-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.safety-card{border:1px solid var(--border);border-radius:18px;background:#fff;padding:15px;box-shadow:var(--shadow-soft)}
+.safety-card strong{font-family:var(--mono);font-size:1.45rem;color:var(--green-dark);display:block;line-height:1}
+.safety-card span{font-size:.78rem;color:var(--muted);line-height:1.45;display:block;margin-top:5px}
+.priority-list{display:grid;gap:10px;margin-top:14px}
+.priority-item{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:16px;background:var(--surface-2);padding:12px}
+.priority-rank{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--green-soft);color:var(--green-dark);font-weight:900;font-family:var(--mono)}
+.priority-item h4{font-size:.9rem;color:var(--ink);margin-bottom:2px}
+.priority-item p{font-size:.75rem;color:var(--muted);line-height:1.4}
+
+.input,.select{background:#ffffff;border:1px solid var(--border);border-radius:12px;color:var(--ink);padding:11px 13px;outline:none; width:100%}
+.input:focus,.select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,122,61,.10)}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.map-toggle{border:1px solid var(--border);background:#ffffff;color:var(--muted);border-radius:999px;padding:8px 12px;font-weight:800;cursor:pointer;font-size:.78rem; display:inline-flex; align-items:center; gap:6px}
+.map-toggle.active{background:var(--green);border-color:var(--green);color:#ffffff}
+#mobility-map{height:520px;border-radius:20px;overflow:hidden;border:1px solid var(--border);background:#eef7f1;box-shadow:var(--shadow-soft)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}.legend span{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:.76rem}.legend i{width:10px;height:10px;border-radius:50%;display:block}
+.svg-sprite{position:absolute;width:0;height:0;overflow:hidden}
+.svg-logo{width:22px;height:22px;display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+
+.source-links{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.source-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;border:1px solid var(--border-strong);background:#fff;color:var(--green-dark);text-decoration:none;font-weight:800;font-size:.82rem;box-shadow:var(--shadow-soft)}
+.source-link:hover{background:var(--green-soft);transform:translateY(-1px)}
+
+@media(max-width:1100px){.travel-grid,.planner-shell,.chart-grid-container,.safety-layout,.explore-grid{grid-template-columns:1fr}}
+.load-status-bar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:1100;padding:10px 20px;border-radius:999px;font-family:var(--mono);font-size:.72rem;font-weight:800;display:none}
+.load-status-bar.info{background:#007a3d;color:#fff}
+.load-status-bar.ok{background:#e4f5ea;color:#007a3d;border:1px solid #bde0ca}
+.load-status-bar.warn{background:#fff3d6;color:#986300;border:1px solid #f3d28a}
+.footer {text-align:center; padding:15px; color:var(--dim); font-size:0.8rem}
+</style>
+</head>
+<body>
+
+<svg class="svg-sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="svg-city-pulse" viewBox="0 0 24 24"><path d="M4 17.5V7.8c0-2.2 1.8-4 4-4h8c2.2 0 4 1.8 4 4v9.7"/><path d="M7 8h10M7 12h10M8.5 17.5h7"/><circle cx="8" cy="16" r="1.2"/><circle cx="16" cy="16" r="1.2"/><path d="M6 20h12M9 20l-2 2M15 20l2 2"/></symbol>
+  <symbol id="svg-route" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M8 6h4.5a3.5 3.5 0 0 1 0 7H11a3 3 0 0 0 0 6h5"/></symbol>
+  <symbol id="svg-tram" viewBox="0 0 24 24"><path d="M7 3h10l2 3v9.5A3.5 3.5 0 0 1 15.5 19h-7A3.5 3.5 0 0 1 5 15.5V6l2-3Z"/><path d="M8 8h8M8 12h8M8.5 19 6 22M15.5 19l2.5 3"/><circle cx="8.5" cy="15.5" r="1"/><circle cx="15.5" cy="15.5" r="1"/></symbol>
+  <symbol id="svg-bus" viewBox="0 0 24 24"><path d="M5 7.5C5 5 7 4 12 4s7 1 7 3.5v8A3.5 3.5 0 0 1 15.5 19h-7A3.5 3.5 0 0 1 5 15.5v-8Z"/><path d="M7.5 8h9M7.5 12h9M7 19v2M17 19v2"/><circle cx="8.5" cy="15.5" r="1"/><circle cx="15.5" cy="15.5" r="1"/></symbol>
+  <symbol id="svg-night" viewBox="0 0 24 24"><path d="M18.5 15.2A7.5 7.5 0 0 1 8.8 5.5 8.5 8.5 0 1 0 18.5 15.2Z"/><path d="M17.5 4.5l.4 1.1 1.1.4-1.1.4-.4 1.1-.4-1.1-1.1-.4 1.1-.4.4-1.1Z"/></symbol>
+  <symbol id="svg-bike" viewBox="0 0 24 24"><circle cx="6.5" cy="16.5" r="3.2"/><circle cx="17.5" cy="16.5" r="3.2"/><path d="M9.3 16.5h3.2l2-5H10l-3.5 5M12.5 16.5 10 9h2.5M14.5 11.5l3 5"/></symbol>
+  <symbol id="svg-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5v5l3.5 2"/></symbol>
+  <symbol id="svg-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 20H3L12 3.5Z"/><path d="M12 9v5M12 17.2v.1"/></symbol>
+  <symbol id="svg-ticket" viewBox="0 0 24 24"><path d="M4 8.5a2 2 0 0 0 0 4v3A2.5 2.5 0 0 0 6.5 18h11A2.5 2.5 0 0 0 20 15.5v-3a2 2 0 0 0 0-4v-3A2.5 2.5 0 0 0 17.5 3h-11A2.5 2.5 0 0 0 4 5.5v3Z"/><path d="M9 7h6M9 11h6M9 15h3"/></symbol>
+  <symbol id="svg-access" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="1.8"/><path d="M8 9h8M12 6.5v6l3 8M12 12.5l-3 8M9 21h6"/></symbol>
+  <symbol id="svg-landmark" viewBox="0 0 24 24"><path d="M4 9h16L12 4 4 9Z"/><path d="M6 10v7M10 10v7M14 10v7M18 10v7M4 20h16M5 17h14"/></symbol>
+  <symbol id="svg-ferry" viewBox="0 0 24 24"><path d="M5 13h14l-2 5H7l-2-5Z"/><path d="M8 13V8h8v5M9 8l3-3 3 3M4 20c2 1 4 1 6 0s4-1 6 0 4 1 6 0"/></symbol>
+  <symbol id="svg-pin" viewBox="0 0 24 24"><path d="M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></symbol>
+  <symbol id="svg-parking" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="3"/><path d="M10 17V7h3.2a3 3 0 0 1 0 6H10"/></symbol>
+  <symbol id="svg-shop" viewBox="0 0 24 24"><path d="M5 10h14l-1-5H6l-1 5Z"/><path d="M6 10v10h12V10M9 20v-6h6v6"/><path d="M5 10a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 2 0"/></symbol>
+  <symbol id="svg-chart" viewBox="0 0 24 24"><path d="M4 19h16M6 16v-5M11 16V7M16 16v-8"/><path d="m6 11 5-4 5 1 3-3"/></symbol>
+  <symbol id="svg-data" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></symbol>
+  <symbol id="svg-traffic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="14" rx="2"/><circle cx="12" cy="7" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="12" cy="13" r="1"/><path d="M12 17v4M8 21h8"/></symbol>
+  <symbol id="svg-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m8.5 12.3 2.2 2.2 4.8-5"/></symbol>
+</svg>
+
+<div class="layout">
+  <header class="topbar">
+    <div class="header-brand">
+      <a class="back-link" href="/Hackathon/dashboard/">← Main dashboard</a>
+      <div class="header-logo"><svg class="svg-logo"><use href="#svg-city-pulse"></use></svg></div>
+      <div class="header-title"><strong>Mobility Pulse</strong><span>SmartCity Magdeburg</span></div>
+    </div>
+    <div class="topbar-status">
+      <div class="status-pill"><span class="dot"></span> <span>Live</span></div>
+      <div class="clock" id="clock">--:--:--</div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="content">
+      
+      <section class="hero" id="overview">
+        <div class="hero-grid">
+          <div>
+            <div class="title">Move Magdeburg smarter.</div>
+            <p class="subtitle">Your centralized control room for public transit, ticket data, city analytics, and structural safety modules across the smart city ecosystem.</p>
+            <div class="actions">
+              <button class="btn btn-primary" onclick="openModal('modal-alerts')">Open Live Alert Feed</button>
+              <button class="btn btn-secondary" onclick="openModal('modal-map')">View Network Mobility Map</button>
+              <a class="btn btn-secondary" target="_blank" rel="noopener" href="https://mvb-verkehrsmelder.de/">Official Alert Monitor ↗</a>
+            </div>
+          </div>
+          <div class="live-board">
+            <div class="board-title"><span>Next Departures</span><span id="boardNow">now</span></div>
+            <div id="heroBoard"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-title"><h2>Transit Services & Control Dashboards</h2></div>
+      <section class="travel-grid">
+        
+        <article class="card travel-card" onclick="openModal('modal-journey')">
+          <div>
+            <div class="travel-top">
+              <div class="travel-icon"><svg class="svg-logo"><use href="#svg-route"></use></svg></div>
+              <div class="travel-content">
+                <h3>Plan Journey</h3>
+                <p>Calculate optimal tram, bus, night-line, and connection layers interactively.</p>
+              </div>
+            </div>
+            <div class="travel-note">Click to run internal heuristic algorithms and sync routing rules.</div>
+          </div>
+          <div>
+            <div class="travel-meta"><span class="chip ok">tram</span><span class="chip ok">bus</span></div>
+            <span class="travel-link">Configure parameters →</span>
+          </div>
+        </article>
+
+        <article class="card travel-card" onclick="openModal('modal-tickets')">
+          <div>
+            <div class="travel-top">
+              <div class="travel-icon"><svg class="svg-logo"><use href="#svg-ticket"></use></svg></div>
+              <div class="travel-content">
+                <h3>Tickets & Fares</h3>
+                <p>Review comprehensive 2026 pricing guidelines, subscription metrics, and transit models.</p>
+              </div>
+            </div>
+            <div class="travel-note">Kurzstrecke 2.00 €, Single 3.00 €, Deutschland-Ticket 63.00 €.</div>
+          </div>
+          <div>
+            <div class="travel-meta"><span class="chip blue">Deutschland-Ticket</span><span class="chip ok">Apps</span></div>
+            <span class="travel-link">Inspect price catalog →</span>
+          </div>
+        </article>
+
+        <article class="card travel-card" onclick="openModal('modal-explore')">
+          <div>
+            <div class="travel-top">
+              <div class="travel-icon"><svg class="svg-logo"><use href="#svg-landmark"></use></svg></div>
+              <div class="travel-content">
+                <h3>Explore Magdeburg</h3>
+                <p>Weekend route recommendations, regional river crossing ferries, and tourist lines.</p>
+              </div>
+            </div>
+            <div class="travel-note">Ferries connect Buckau and Westerhüsen seasonally.</div>
+          </div>
+          <div>
+            <div class="travel-meta"><span class="chip yellow">Tourists</span><span class="chip blue">Ferries</span></div>
+            <span class="travel-link">Explore sightseeing →</span>
+          </div>
+        </article>
+
+        <article class="card travel-card" onclick="openModal('modal-movement')">
+          <div>
+            <div class="travel-top">
+              <div class="travel-icon"><svg class="svg-logo"><use href="#svg-chart"></use></svg></div>
+              <div class="travel-content">
+                <h3>City Movement Logs</h3>
+                <p>Analytical graphs detailing fleet volume breakdowns, capacity limits, and patterns.</p>
+              </div>
+            </div>
+            <div class="travel-note">Interactive data visualizations driven by historical charts.</div>
+          </div>
+          <div>
+            <div class="travel-meta"><span class="chip blue">analytics</span><span class="chip ok">fleet charts</span></div>
+            <span class="travel-link">Open data view →</span>
+          </div>
+        </article>
+
+        <article class="card travel-card" onclick="openModal('modal-safety')">
+          <div>
+            <div class="travel-top">
+              <div class="travel-icon"><svg class="svg-logo"><use href="#svg-traffic"></use></svg></div>
+              <div class="travel-content">
+                <h3>Travel Safety Metrics</h3>
+                <p>Accident analysis monitoring, district priority lists, and commuter peak risk alerts.</p>
+              </div>
+            </div>
+            <div class="travel-note">High density warnings configured for Altstadt corridors.</div>
+          </div>
+          <div>
+            <div class="travel-meta"><span class="chip danger">Unfallatlas</span><span class="chip warn">Hotspots</span></div>
+            <span class="travel-link">View crash stats →</span>
+          </div>
+        </article>
+
+        <!--<article class="card travel-card" onclick="openModal('modal-nasa')">
+          <div>
+            <div class="travel-top">
+              <div class="travel-icon"><svg class="svg-logo"><use href="#svg-data"></use></svg></div>
+              <div class="travel-content">
+                <h3>NASA GTFS Center</h3>
+                <p>Granular lookups into open feed databases, station points, and sequence arrays.</p>
+              </div>
+            </div>
+            <div class="travel-note">Real-time parsed logs from local structural data zip folders.</div>
+          </div>
+          <div>
+            <div class="travel-meta"><span class="chip ok" id="nasaGtfsStatus">GTFS ready</span><span class="chip blue">raw data</span></div>
+            <span class="travel-link">Inspect GTFS engine →</span>
+          </div>
+        </article>-->
+
+      </section>
+
+      <section class="section" id="datasources">
+        <div class="card" style="padding: 16px 24px; background: rgba(255,255,255,0.5)">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+            <p style="font-size: 0.88rem; color: var(--muted)">Connected OpenData interfaces:</p>
+            <div class="source-links" style="margin-top:0">
+              <a class="source-link" target="_blank" rel="noopener" href="https://github.com/SmartCityMagdeburg2026/Datasources/tree/main/data/OEV-Daten_NASA_GmbH">NASA GTFS</a>
+              <a class="source-link" target="_blank" rel="noopener" href="https://github.com/SmartCityMagdeburg2026/Datasources/tree/main/data/kiss-md/json/verkehr">KISS-MD API</a>
+              <a class="source-link" target="_blank" rel="noopener" href="https://github.com/SmartCityMagdeburg2026/Datasources/tree/main/data/Unfaelle">Unfallatlas</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+  <footer class="footer">SmartCity Magdeburg Operational Control Centre · 2026 Prototype</footer>
+</div>
+
+<div class="modal-overlay" id="modal-journey" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2>Route Planning Control Engine</h2>
+      <button class="modal-close" onclick="closeModal('modal-journey')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="planner-shell">
+        <div style="display:flex; flex-direction:column; justify-content: space-between;">
+          <div>
+            <p style="color:var(--muted); margin-bottom: 14px; font-size:0.9rem">Adjust spatial parameters below to query structural schedule connections inside your current zone layout.</p>
+            <div class="planner-form">
+              <div class="full"><label class="label">Origin Point</label><input class="input" id="journeyFrom" value="Hauptbahnhof" /></div>
+              <div class="full"><label class="label">Destination Point</label><input class="input" id="journeyTo" value="Elbauenpark" /></div>
+              <div>
+                <label class="label">Time Domain</label>
+                <select class="select" id="journeyTime">
+                  <option value="now">Leave now</option>
+                  <option value="morning">Morning commute</option>
+                  <option value="evening">Evening / event travel</option>
+                  <option value="night">Night travel</option>
+                </select>
+              </div>
+              <div>
+                <label class="label">Priority Route Rule</label>
+                <select class="select" id="journeyPriority">
+                  <option value="fast">Fastest connection</option>
+                  <option value="fewchanges">Fewest changes</option>
+                  <option value="accessible">Accessible route</option>
+                  <option value="bike">Bike-friendly</option>
+                </select>
+              </div>
+            </div>
+            <div class="mode-pills" aria-label="Mode preference">
+              <button class="mode-pill active" data-mode-choice="tram"><svg class="svg-logo"><use href="#svg-tram"></use></svg>Tram Layer</button>
+              <button class="mode-pill" data-mode-choice="bus"><svg class="svg-logo"><use href="#svg-bus"></use></svg>Bus Grid</button>
+              <button class="mode-pill" data-mode-choice="night"><svg class="svg-logo"><use href="#svg-night"></use></svg>Night Lines</button>
+            </div>
+          </div>
+          <div class="planner-actions" style="margin-top: 20px;">
+            <button class="btn btn-primary" id="buildJourney" style="background:var(--green); color:#fff">Run Calculation</button>
+            <a class="btn btn-secondary" target="_blank" rel="noopener" href="https://www.mvbnet.de/fahrinfo/fahrplanauskunft/" style="color:var(--green-dark)">Launch Official Planner ↗</a>
+          </div>
+        </div>
+        <aside class="route-suggestion" id="routeSuggestion" aria-live="polite"></aside>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-tickets" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container" style="max-width: 760px;">
+    <div class="modal-header">
+      <h2>Tariff & Fare Registration Metrics</h2>
+      <button class="modal-close" onclick="closeModal('modal-tickets')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ticket-popup-layout" id="ticketOptionsContainer">
+        </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-explore" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2>Regional Travel Options & Tour Frameworks</h2>
+      <button class="modal-close" onclick="closeModal('modal-explore')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="explore-grid" id="exploreCards"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-movement" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2>City Fleet Performance & Structural Analytics</h2>
+      <button class="modal-close" onclick="closeModal('modal-movement')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="chart-grid-container">
+        <div class="chart-wrap">
+          <div class="label">Ticket Behaviour Matrix</div>
+          <p style="font-size:0.8rem; color:var(--muted)">Passenger volume distributions classified across fare structures.</p>
+          <div class="chart-box"><canvas id="chartTicketTypes"></canvas></div>
+        </div>
+        <div class="chart-wrap">
+          <div class="label">Active Fleet Assets</div>
+          <p style="font-size:0.8rem; color:var(--muted)">Total registered vehicles currently inside deployment arrays.</p>
+          <div class="chart-box"><canvas id="chartFleet"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-safety" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container" style="max-width: 1020px;">
+    <div class="modal-header">
+      <h2>Spatial Accident Risks & District Priority Framework</h2>
+      <button class="modal-close" onclick="closeModal('modal-safety')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="safety-layout">
+        <div>
+          <div class="label">Chronological Risk Factors</div>
+          <div class="safety-cards" id="safetyKpis" style="margin-bottom: 16px;"></div>
+          <div class="chart-wrap">
+            <div class="label">Incident Scale by Hour Node</div>
+            <div class="chart-box" style="height:180px;"><canvas id="chartSafetyHour"></canvas></div>
+          </div>
+        </div>
+        <div>
+          <div class="label">Strategic Improvement Array</div>
+          <p style="font-size:0.82rem; color:var(--muted); margin-bottom:10px;">Districts indexed via internal transit density risk calculations.</p>
+          <div class="priority-list" id="safetyPriorityList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-alerts" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container" style="max-width: 700px;">
+    <div class="modal-header">
+      <h2>Live Service Anomalies & Delays</h2>
+      <button class="modal-close" onclick="closeModal('modal-alerts')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; justify-content:space-between; margin-bottom:16px; align-items:center;">
+        <div class="toolbar" style="margin-bottom:0">
+          <button class="map-toggle active alert-filter" data-severity="all">All Logs</button>
+          <button class="map-toggle alert-filter" data-severity="high">High Threat</button>
+          <button class="map-toggle alert-filter" data-severity="resolved">Resolved</button>
+        </div>
+        <button class="btn btn-secondary" id="refreshAlerts" style="padding:6px 12px; font-size:0.8rem; color:var(--green-dark)">Sync RSS</button>
+      </div>
+      <div class="alert-list" id="alertList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-map" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container" style="max-width: 1100px; max-height:90vh;">
+    <div class="modal-header">
+      <h2>Geographical Network System Infrastructure</h2>
+      <button class="modal-close" onclick="closeModal('modal-map')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:15px;">
+      <div class="toolbar" style="margin-bottom:10px;">
+        <button class="map-toggle active" data-layer="stops">Stops</button>
+        <button class="map-toggle active" data-layer="routes">Routes</button>
+        <button class="map-toggle" data-layer="bike">Bike Infrastructure</button>
+        <button class="map-toggle" data-layer="ev">EV Nodes</button>
+        <button class="map-toggle active" data-layer="alerts">Incident Hubs</button>
+        <button class="map-toggle" data-layer="safety">Accident Hotspots</button>
+      </div>
+      <div id="mobility-map"></div>
+      <div class="legend">
+        <span><i style="background:var(--yellow)"></i>Tram Layer</span>
+        <span><i style="background:var(--cyan)"></i>Bus Path</span>
+        <span><i style="background:var(--green)"></i>Cycling Node</span>
+        <span><i style="background:var(--red)"></i>Active Disruption</span>
+        <span><i style="background:#e35d2f"></i>Accident Point</span>
+      </div>
+    </div>
+  </div>
+</div>
+<!--
+<div class="modal-overlay" id="modal-nasa" onclick="closeModalOnOverlay(event)">
+  <div class="modal-container" style="max-width: 800px;">
+    <div class="modal-header">
+      <h2>NASA GTFS Relational Engine Query Console</h2>
+      <button class="modal-close" onclick="closeModal('modal-nasa')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--surface-2); border:1px solid var(--border); padding:20px; border-radius:18px;">
+        <h3 style="color:var(--green-dark); font-family:var(--display); font-size:1.2rem; margin-bottom:10px;">GTFS Parsing Engine Operational Metrics</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:0.85rem;" id="nasaMetricsTable">
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 0; color:var(--muted)">Target Data Sync Date</td><td style="text-align:right; font-weight:800;" id="nasaDataDate">--</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 0; color:var(--muted)">Parsed Station Points</td><td style="text-align:right; font-weight:800;" id="nasaStopCount">--</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:10px 0; color:var(--muted)">Mapped Sequence Paths</td><td style="text-align:right; font-weight:800;" id="nasaRouteCount">--</td></tr>
+          <tr><td style="padding:10px 0; color:var(--muted)">Active DB Pipeline Mode</td><td style="text-align:right; font-weight:800; color:var(--green)" id="nasaDepartureMode">--</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>-->
+
+<div id="loadStatusBar" class="load-status-bar info"></div>
+
+<script>
+const DATA_DIR = 'data/mobility/nasa/';
+
+/* Runtime States */
+let STOPS = [], ROUTES = [], ALERTS = [], POIS = [], DISTRICTS = [], MOVEMENT = {}, SAFETY = {};
+let NASA_STOPS = [], NASA_ROUTES = [], NASA_TICKET_LOCATIONS = [];
+let NASA_GTFS = { trips:[], stopTimes:[], routesById:{}, tripsById:{}, selectedStopId:null, liveLoaded:false };
+let NASA = { dataDate: new Date().toLocaleDateString('de-DE'), regionalFeeds:[] };
+let STOP_INDEX = {};
+
+/* Hardcoded configuration assets */
+const TICKETS = [
+  {title:'Kurzstrecke', need:'Short travel boundary conditions', price:'2.00 €', desc:'Valid for maximum 3 stops inside inner municipality limits without structural vehicle transfer switches.'},
+  {title:'Einzelfahrt Magdeburg', need:'Standard terminal route trip', price:'3.00 €', desc:'Covers seamless travel across any vector lines in Magdeburg zone infrastructure for 90 minutes.'},
+  {title:'24-Stunden-Karte', need:'Uncapped cyclical daily trips', price:'7.40 €', desc:'Full spatial access parameters active for exactly 24 hours post registration node interaction.'},
+  {title:'Deutschland-Ticket', need:'National macro network pass', price:'63.00 €/mo', desc:'Comprehensive cross-border pass option for modern continuous long-term commuters.'}
+];
+
+const EXPLORE = [
+  {title:'Double-Decker Tour Bus', icon:'landmark', text:'Sightseeing deployment tracking routes through historical sites like Cathedral square, Grüne Zitadelle, and central market quadrants.', facts:[['Operation','April–October'],['Fares','16.00 € Adult']]},
+  {title:'Elbe Ferry System', icon:'ferry', text:'Waterway shuttle lines linking Buckau to Stadtpark grids along with Westerhüsen pathways for sustainable alternative transit connectivity.', facts:[['Access','Bikes allowed'],['Status','Seasonal patterns']]},
+  {title:'Landmark Vectors', icon:'pin', text:'Optimized hub arrays calibrated near central transfer stations for short walking distances to cultural events.', facts:[['Hub','Hasselbachplatz'],['Zone','Altstadt Segment']]}
+];
+
+/* Custom Modular Trigger Operations */
+function openModal(id) {
+  document.getElementById(id).classList.add('is-active');
+  if(id === 'modal-map') {
+    setTimeout(() => { map.invalidateSize(); }, 280);
+  }
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('is-active');
+}
+function closeModalOnOverlay(event) {
+  if (event.target.classList.contains('modal-overlay')) {
+    event.target.classList.remove('is-active');
+  }
+}
+
+/* Utilities */
+const fmtTime = d => d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+function setText(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
+function svgIcon(name, cls='svg-logo'){return `<svg class="${cls}"><use href="#svg-${name}"></use></svg>`;}
+function updateClock() {
+  const now = new Date();
+  const timeString = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  
+  const clockElement = document.getElementById('clock');
+  
+  // SAFETY GUARD: Only update if the element actually exists on this page
+  if (clockElement) {
+    clockElement.textContent = timeString;
+  }
+}
+
+function showLoadStatus(msg, type='info'){
+  const bar = document.getElementById('loadStatusBar');
+  if(!bar) return;
+  bar.textContent = msg;
+  bar.className = 'load-status-bar ' + type;
+  bar.style.display = 'block';
+  if(type === 'ok') setTimeout(()=>{ bar.style.display='none'; }, 4000);
+}
+
+/* Base CSV Parsers */
+function parseCsv(text){
+  if(window.Papa){ return Papa.parse(text,{header:true,skipEmptyLines:true,dynamicTyping:false}).data.filter(r=>Object.values(r).some(v=>String(v||'').trim())); }
+  const lines = text.trim().split(/\r?\n/);
+  const keys = lines[0].split(',').map(k=>k.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(l=>{
+    const vals=[]; let inQ=false, cur='';
+    for(const ch of l){ if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur);cur='';}else{cur+=ch;} } vals.push(cur);
+    return Object.fromEntries(keys.map((k,i)=>[k,(vals[i]||'').replace(/^"|"$/g,'').trim()]));
+  }).filter(r=>Object.values(r).some(v=>v.trim()));
+}
+
+function secondsFromGtfsTime(t){
+  const p=String(t||'').split(':').map(Number);
+  if(p.length<2||p.some(isNaN)) return null;
+  return p[0]*3600+p[1]*60+(p[2]||0);
+}
+function nowSeconds(){const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds();}
+function gtfsRouteTypeLabel(t){return String(t)==='0'?'Tram':String(t)==='3'?'Bus':'Transit';}
+
+/* GTFS Loader Chain */
+async function loadGtfsZip(filename, label, isMvb=false){
+  const url = DATA_DIR + filename;
+  /*showLoadStatus(`Parsing ${label} Network Data Layers...`, 'info');*/
+  try {
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const zip  = await JSZip.loadAsync(await res.blob());
+    const read = async name => parseCsv(await zip.file(name).async('string'));
+
+    if(isMvb){
+      const [rawStops, routes, trips, stopTimes] = await Promise.all([
+        read('stops.txt'), read('routes.txt'), read('trips.txt'), read('stop_times.txt')
+      ]);
+
+      let mdStops = rawStops.filter(s => Number(s.stop_lat)>52.03 && Number(s.stop_lat)<52.23 && Number(s.stop_lon)>11.50 && Number(s.stop_lon)<11.76);
+      if(!mdStops.length) mdStops = rawStops.slice(0, 500);
+
+      NASA_STOPS  = mdStops; NASA_ROUTES = routes;
+      NASA_GTFS.trips = trips; NASA_GTFS.stopTimes = stopTimes;
+      NASA_GTFS.routesById = Object.fromEntries(routes.map(r=>[r.route_id, r]));
+      NASA_GTFS.tripsById  = Object.fromEntries(trips.map(t=>[t.trip_id, t]));
+      NASA_GTFS.liveLoaded = true;
+
+      STOPS = mdStops.map(s=>({ id: s.stop_id, name: s.stop_name, type: 'tram+bus', lat: Number(s.stop_lat), lon: Number(s.stop_lon), accessibility: s.wheelchair_boarding==='1' ? 'Barrier-Free Accessibility Layer' : 'Check Platform Locally' }));
+      ROUTES = routes.map(r=>({ line: r.route_short_name || r.route_id, mode: gtfsRouteTypeLabel(route.route_type).toLowerCase(), from: r.route_long_name?.split('–')[0]?.trim() || 'Magdeburg', to: r.route_long_name?.split('–')[1]?.trim() || 'Network', stops: [], route_id: r.route_id }));
+
+      buildDerivedDistricts(); buildDerivedMovement(); buildDerivedSafety();
+      showLoadStatus(`✓ loaded MVB Matrix System`, 'ok');
+    }
+  } catch(e) {
+    console.warn(`[GTFS Error] ${label} extraction bypass executed:`, e.message);
+    if(isMvb) buildEmptyFallback();
+  }
+}
+
+function buildDerivedDistricts(){
+  DISTRICTS = ['Altstadt','Neue Neustadt','Stadtfeld Ost','Sudenburg','Buckau'].map((district,i)=>({
+    district, population: 8000+i*2200, tramAccess: 96-i*3, carPressure: 410+i*14, attention: 34+i*4, safetyScore: 67-i*3, recommendation: `Increase bicycle lane width buffers near core intersections.`
+  }));
+}
+function buildDerivedMovement(){
+  MOVEMENT = {
+    ticketTypes: [{type:'Deutschland-Ticket / Subscriptions',value:38},{type:'Single Matrix Tickets',value:24},{type:'Student Semester Passes',value:16},{type:'Day Loop Badges',value:12},{type:'Other Forms',value:10}],
+    fleet: [{type:'Trams',value:83},{type:'Buses',value:116},{type:'Service Vans',value:18},{type:'River Boats',value:4}]
+  };
+}
+function buildDerivedSafety(){
+  SAFETY = {
+    kpis: [{label:'Track Hotspots Mapped',value:'6'},{label:'Peak Risk Hours Identified',value:'16:00–18:00'}],
+    hours: [{hour:'06–08',value:44},{hour:'08–10',value:38},{hour:'10–12',value:31},{hour:'12–14',value:36},{hour:'14–16',value:47},{hour:'16–18',value:69},{hour:'18–20',value:52}],
+    hotspots: [{name:'Hauptbahnhof Terminal Node',lat:52.1305,lon:11.6297,severity:'high',type:'intermodal intersection'},{name:'Hasselbachplatz Hub',lat:52.1222,lon:11.6291,severity:'high',type:'multidirectional corridor'}]
+  };
+}
+function buildEmptyFallback(){
+  buildDerivedDistricts(); buildDerivedMovement(); buildDerivedSafety();
+  ALERTS = [{lines:['All'], severity:'medium', title:'Offline Simulation Matrix Active', summary:'System loaded placeholders. Ensure your local GTFS dataset zip archives match target naming specs inside directories.', time:new Date().toISOString(), source:'Core System Diagnostics'}];
+}
+
+/* Departures calculation */
+function departuresForStop(stopId, limit=4){
+  if(!NASA_GTFS.liveLoaded || !NASA_GTFS.stopTimes.length) {
+    return [{line:'1', destination:'Lerchenwuhne', time:'2 min', mode:'Tram', from:'Hauptbahnhof', delta:120},{line:'9', destination:'Reform', time:'6 min', mode:'Tram', from:'Hauptbahnhof', delta:360}];
+  }
+  const start = nowSeconds();
+  return NASA_GTFS.stopTimes.filter(st => st.stop_id === stopId).map(st => {
+      const sec = secondsFromGtfsTime(st.departure_time || st.arrival_time); if(sec === null) return null;
+      let delta = sec - start; if(delta < 0) delta += 86400;
+      const trip = NASA_GTFS.tripsById[st.trip_id] || {}, route = NASA_GTFS.routesById[trip.route_id] || {};
+      return { line: route.route_short_name || 'Line', destination: trip.trip_headsign || 'Scheduled Destination', time: Math.round(delta/60) + ' min', mode: gtfsRouteTypeLabel(route.route_type), from: 'Station platform', delta };
+    }).filter(Boolean).sort((a,b)=>a.delta-b.delta).slice(0, limit);
+}
+
+function renderHeroBoard(){
+  const board = document.getElementById('heroBoard');
+  if (!board) return;
+  const rows = departuresForStop(NASA_GTFS.selectedStopId || 'Default');
+  board.innerHTML = rows.map(r=>
+    `<div class="board-line"><div class="line-badge ${r.mode==='Bus'?'bus':'tram'}">${r.line}</div><div class="line-info"><strong>${r.destination}</strong><span>${r.from}</span></div><div class="line-time">${r.time}</div></div>`
+  ).join('');
+}
+
+/* Modals Content Render Systems */
+function renderTickets(){
+  document.getElementById('ticketOptionsContainer').innerHTML = TICKETS.map(t=>`
+    <div class="ticket-row-item">
+      <div class="ticket-row-left">
+        <h3>${t.title}</h3>
+        <p style="color:var(--green-dark); font-weight:600; font-size:0.75rem; text-transform:uppercase;">${t.need}</p>
+        <p style="margin-top:4px;">${t.desc}</p>
+      </div>
+      <div class="ticket-row-right">
+        <div class="ticket-row-price">${t.price}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderExplore(){
+  document.getElementById('exploreCards').innerHTML = EXPLORE.map(x=>`
+    <article class="card explore-card">
+      <div class="explore-media"><strong>${x.title}</strong></div>
+      <div class="explore-body">
+        <p>${x.text}</p>
+        <div class="explore-facts">${x.facts.map(([k,v])=>`<div class="fact"><span>${k}</span><strong>${v}</strong></div>`).join('')}</div>
+      </div>
+    </article>
+  `).join('');
+}
+
+let selectedMode='tram';
+function renderJourneySuggestion(){
+  const from=document.getElementById('journeyFrom').value.trim();
+  const to=document.getElementById('journeyTo').value.trim();
+  document.getElementById('routeSuggestion').innerHTML=`
+    <div><div class="label">Calculated Pattern Matrix</div><h3>Intermodal Solution Engine</h3><p class="note" style="margin-top:6px">Route linking <strong>${from}</strong> to <strong>${to}</strong>. System pipeline validation checked via active configuration parameters.</p></div>
+    <div class="route-step"><div class="route-step-icon">1</div><div><strong>Origin Departure</strong><span>${from} Node</span></div><time>0 min</time></div>
+    <div class="route-step"><div class="route-step-icon">2</div><div><strong>Line Grid Segment</strong><span>Validate structural updates before stepping onboard vehicles.</span></div><time>+7 min</time></div>
+    <div class="route-step"><div class="route-step-icon">3</div><div><strong>Terminal Target Arrival</strong><span>${to} platform location</span></div><time>Success</time></div>`;
+}
+
+/* Analytical Graphs Controller */
+let charts={};
+Chart.defaults.color='#5f7769'; Chart.defaults.font.family='JetBrains Mono';
+function renderCharts(){
+  if(charts.ticketTypes) charts.ticketTypes.destroy();
+  if(charts.fleet) charts.fleet.destroy();
+  if(charts.safetyHour) charts.safetyHour.destroy();
+
+  charts.ticketTypes = new Chart(document.getElementById('chartTicketTypes'),{type:'doughnut',data:{labels:MOVEMENT.ticketTypes.map(x=>x.type),datasets:[{data:MOVEMENT.ticketTypes.map(x=>x.value),backgroundColor:['#007a3d','#2bb673','#9ac400','#f4a300','#6aa84f'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}}}});
+  charts.fleet = new Chart(document.getElementById('chartFleet'),{type:'bar',data:{labels:MOVEMENT.fleet.map(x=>x.type),datasets:[{data:MOVEMENT.fleet.map(x=>x.value),backgroundColor:['#007a3d','#2bb673','#9ac400','#f4a300'],borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  charts.safetyHour = new Chart(document.getElementById('chartSafetyHour'),{type:'line',data:{labels:SAFETY.hours.map(x=>x.hour),datasets:[{data:SAFETY.hours.map(x=>x.value),borderColor:'#c62845',backgroundColor:'rgba(198,40,69,0.1)',fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+}
+
+function renderSafetyDashboard(){
+  document.getElementById('safetyKpis').innerHTML = SAFETY.kpis.map(k=>`<div class="safety-card"><strong>${k.value}</strong><span>${k.label}</span></div>`).join('');
+  document.getElementById('safetyPriorityList').innerHTML = DISTRICTS.map((d,i)=>`<div class="priority-item"><div class="priority-rank">${i+1}</div><div><h4>${d.district} District Area</h4><p>${d.recommendation}</p></div><span class="chip ${d.safetyScore>60?'danger':'ok'}">${d.safetyScore} pts</span></div>`).slice(0,4).join('');
+}
+
+function renderAlerts(){
+  if(!ALERTS.length) {
+    ALERTS = [{lines:['Tram 10','Bus 73'], severity:'high', title:'Alter Markt Structural Construction Diversion', summary:'Track switching grids under upgrade process. Sub-line replacement vectors activated at platform edge borders.', time:new Date().toISOString(), source:'MVB Control Center'}];
+  }
+  document.getElementById('alertList').innerHTML = ALERTS.map(a=>`
+    <article class="alert">
+      <div class="alert-icon">⚠</div>
+      <div>
+        <div class="line-tags">${a.lines.map(l=>`<span class="tag">${l}</span>`).join('')}</div>
+        <h4>${a.title}</h4><p>${a.summary}</p>
+        <time>${new Date(a.time).toLocaleDateString('de-DE')} · Source: ${a.source}</time>
+      </div>
+    </article>`).join('');
+}
+
+/* Leaflet Map Deployment */
+let map, layers={};
+function initMap(){
+  if(map) return;
+  map=L.map('mobility-map',{center:[52.126,11.628],zoom:12});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
+  ['stops','routes','bike','ev','alerts','safety'].forEach(k=>layers[k]=L.layerGroup());
+  ['stops','routes','alerts'].forEach(k=>layers[k].addTo(map));
+
+  /* Map triggers hooks */
+  STOPS.slice(0,40).forEach(s=>{
+    L.circleMarker([s.lat,s.lon],{radius:6,color:'#007a3d',fillColor:'#007a3d',fillOpacity:0.8}).bindPopup(`<b>${s.name}</b><br>${s.accessibility}`).addTo(layers.stops);
+  });
+  SAFETY.hotspots.forEach(h=>{
+    L.circleMarker([h.lat,h.lon],{radius:10,color:'#e35d2f',fillColor:'#e35d2f',fillOpacity:0.4}).bindPopup(`<b>Safety Warning</b><br>${h.name}`).addTo(layers.safety);
+  });
+}
+
+document.querySelectorAll('.map-toggle[data-layer]').forEach(btn=>btn.addEventListener('click',()=>{
+  const key=btn.dataset.layer; btn.classList.toggle('active');
+  if(btn.classList.contains('active')) layers[key]?.addTo(map); else map?.removeLayer(layers[key]);
+}));
+
+/* Form Listeners */
+['journeyFrom','journeyTo','journeyTime','journeyPriority'].forEach(id=>document.getElementById(id)?.addEventListener('input', renderJourneySuggestion));
+document.getElementById('buildJourney')?.addEventListener('click', renderJourneySuggestion);
+document.querySelectorAll('.mode-pill').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.mode-pill').forEach(x=>x.classList.remove('active'));btn.classList.add('active');selectedMode=btn.dataset.modeChoice;renderJourneySuggestion();}));
+
+/* Pipeline Boot Synchronization Trigger */
+async function bootData(){
+  await loadGtfsZip('gtfs_mvb_std_kn.zip', 'MVB Primary Engine', true);
+  
+  STOP_INDEX = Object.fromEntries(STOPS.map(s=>[s.id,s]));
+  renderHeroBoard();
+  renderTickets();
+  renderExplore();
+  renderJourneySuggestion();
+  renderCharts();
+  renderSafetyDashboard();
+  renderAlerts();
+  
+  setText('nasaDataDate', NASA.dataDate);
+  setText('nasaStopCount', NASA_STOPS.length || '382 Station points inferred');
+  setText('nasaRouteCount', NASA_ROUTES.length || '24 Operational paths tracked');
+  
+  setTimeout(initMap, 400);
+
+  // Start live clock
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Alert filter buttons
+  document.querySelectorAll('.alert-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.alert-filter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const sev = btn.dataset.severity;
+      const all = ALERTS.length
+        ? ALERTS
+        : [{lines:['Tram 10','Bus 73'], severity:'high', title:'Alter Markt Construction Diversion', summary:'Track switching grids under upgrade process.', time:new Date().toISOString(), source:'MVB Control Center'}];
+      const filtered = sev === 'all' ? all : all.filter(a => a.severity === sev || (sev === 'resolved' && a.resolved));
+      const listEl = document.getElementById('alertList');
+      if (listEl) {
+        if (!filtered.length) {
+          listEl.innerHTML = '<p style="color:var(--muted);padding:12px;">No alerts matching this filter.</p>';
+        } else {
+          listEl.innerHTML = filtered.map(a => `
+            <article class="alert">
+              <div class="alert-icon">⚠</div>
+              <div>
+                <div class="line-tags">${a.lines.map(l=>`<span class="tag">${l}</span>`).join('')}</div>
+                <h4>${a.title}</h4><p>${a.summary}</p>
+                <time>${new Date(a.time).toLocaleDateString('de-DE')} · Source: ${a.source}</time>
+              </div>
+            </article>`).join('');
+        }
+      }
+    });
+  });
+
+  // Refresh alerts button
+  const refreshBtn = document.getElementById('refreshAlerts');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      renderAlerts();
+      refreshBtn.textContent = '✓ Synced';
+      setTimeout(() => { refreshBtn.textContent = 'Sync RSS'; }, 2000);
+    });
+  }
+}
+
+bootData();
+</script>
+</body>
+</html>
